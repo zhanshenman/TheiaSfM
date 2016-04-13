@@ -40,6 +40,7 @@
 
 #include <cmath>
 #include <complex>
+#include <limits>
 
 #include "theia/math/polynomial.h"
 #include "theia/math/util.h"
@@ -54,14 +55,14 @@ using Eigen::VectorXcd;
 
 namespace {
 // Machine precision constants.
-static const double mult_eps = 2e-16;
-static const double sum_eps = 2e-16;
+static const double mult_eps = std::numeric_limits<double>::epsilon();
+static const double sum_eps = std::numeric_limits<double>::epsilon();
 
-enum class ConvergenceType{
+enum class ConvergenceType {
   NO_CONVERGENCE = 0,
-    LINEAR_CONVERGENCE = 1,
-    QUADRATIC_CONVERGENCE = 2
-      };
+  LINEAR_CONVERGENCE = 1,
+  QUADRATIC_CONVERGENCE = 2
+};
 
 // Perform division by a linear term of the form (z - x) and evaluate P at x.
 void SyntheticDivisionAndEvaluate(const VectorXd& polynomial,
@@ -394,17 +395,16 @@ ConvergenceType JenkinsTraubSolver::ApplyFixedShiftToKPolynomial(
     sigma_lambda(2) = variable_shift_sigma(2);
 
     // Return with the convergence code if the sequence has converged.
-    if (HasConverged(t_lambda)) {
-      return ConvergenceType::LINEAR_CONVERGENCE;
-    } else if (HasConverged(sigma_lambda)) {
+    if (HasConverged(sigma_lambda)) {
       return ConvergenceType::QUADRATIC_CONVERGENCE;
+    } else if (HasConverged(t_lambda)) {
+      return ConvergenceType::LINEAR_CONVERGENCE;
     }
 
     // Compute K_next using the formula above.
     UpdateKPolynomialWithQuadraticShift(polynomial_quotient,
                                         k_polynomial_quotient);
   }
-
   return ConvergenceType::NO_CONVERGENCE;
 }
 
@@ -440,7 +440,6 @@ bool JenkinsTraubSolver::ApplyQuadraticShiftToKPolynomial(
   if (attempted_quadratic_shift_) {
     return false;
   }
-  attempted_quadratic_shift_ = true;
 
   const double kTinyRelativeStep = 0.01;
 
@@ -513,6 +512,8 @@ bool JenkinsTraubSolver::ApplyQuadraticShiftToKPolynomial(
     k_polynomial_ /= k_polynomial_(0);
     prev_poly_at_root = poly_at_root;
   }
+
+  attempted_quadratic_shift_ = true;
   return ApplyLinearShiftToKPolynomial(root, kMaxLinearShiftIterations);
 }
 
@@ -525,7 +526,6 @@ bool JenkinsTraubSolver::ApplyLinearShiftToKPolynomial(
   if (attempted_linear_shift_) {
     return false;
   }
-  attempted_linear_shift_ = true;
 
   // Compute an initial guess for the root.
   double real_root = (root -
@@ -540,8 +540,8 @@ bool JenkinsTraubSolver::ApplyLinearShiftToKPolynomial(
         polynomial_, real_root, &deflated_polynomial, &polynomial_at_root);
 
     // Terminate if the root evaluation is within our tolerance.
-    if (HasLinearSequenceConverged(
-            deflated_polynomial, real_root, polynomial_at_root)) {
+    if (HasLinearSequenceConverged(deflated_polynomial, real_root,
+                                   polynomial_at_root)) {
       AddRootToOutput(real_root, 0);
       polynomial_ = deflated_polynomial;
       return true;
@@ -558,7 +558,8 @@ bool JenkinsTraubSolver::ApplyLinearShiftToKPolynomial(
     // Compute the update for the root estimation.
     k_polynomial_at_root = EvaluatePolynomial(k_polynomial_, real_root);
     const double delta_root = polynomial_at_root / k_polynomial_at_root;
-    real_root -= polynomial_at_root / k_polynomial_at_root;
+    real_root -= delta_root;
+
     // If the linear iterations appear to be stalling then we may have found a
     // double real root of the form (z - x^2). Attempt a quadratic variable
     // shift from the current estimate of the root.
@@ -570,6 +571,8 @@ bool JenkinsTraubSolver::ApplyLinearShiftToKPolynomial(
                                               kMaxQuadraticShiftIterations);
     }
   }
+
+  attempted_linear_shift_ = true;
   return ApplyQuadraticShiftToKPolynomial(root, kMaxQuadraticShiftIterations);
 }
 
@@ -593,7 +596,7 @@ bool JenkinsTraubSolver::HasQuadraticSequenceConverged(
 bool JenkinsTraubSolver::HasLinearSequenceConverged(const VectorXd& quotient,
                                                     const double root,
                                                     const double p_at_root) {
-  double e = mult_eps / (sum_eps + mult_eps) * std::abs(quotient(0));
+  double e = std::abs(quotient(0)) * mult_eps / (sum_eps + mult_eps);
   const double abs_root = std::abs(root);
   for (int i = 0; i < quotient.size(); i++) {
     e = e * abs_root + std::abs(quotient(i));

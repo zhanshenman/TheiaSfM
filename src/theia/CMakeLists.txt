@@ -59,6 +59,7 @@ set(THEIA_SRC
   io/write_keypoints_and_descriptors.cc
   io/write_matches.cc
   io/write_matches_deprecated.cc
+  io/write_nvm_file.cc
   io/write_ply_file.cc
   matching/cascade_hasher.cc
   matching/cascade_hashing_feature_matcher.cc
@@ -67,8 +68,10 @@ set(THEIA_SRC
   math/closed_form_polynomial_solver.cc
   math/find_polynomial_roots_companion_matrix.cc
   math/find_polynomial_roots_jenkins_traub.cc
+  math/matrix/sparse_cholesky_llt.cc
   math/polynomial.cc
   math/probability/sequential_probability_ratio.cc
+  math/qp_solver.cc
   sfm/bundle_adjustment/bundle_adjust_two_views.cc
   sfm/bundle_adjustment/bundle_adjustment.cc
   sfm/bundle_adjustment/create_loss_function.cc
@@ -145,7 +148,7 @@ set(THEIA_SRC
   sfm/twoview_info.cc
   sfm/verify_two_view_matches.cc
   sfm/view.cc
-  sfm/view_graph/orientations_from_view_graph.cc
+  sfm/view_graph/orientations_from_maximum_spanning_tree.cc
   sfm/view_graph/remove_disconnected_view_pairs.cc
   sfm/view_graph/triplet_extractor.cc
   sfm/view_graph/view_graph.cc
@@ -161,6 +164,7 @@ set(THEIA_LIBRARY_DEPENDENCIES
   ${GFLAGS_LIBRARIES}
   ${GLOG_LIBRARIES}
   ${CIMG_LIBRARIES}
+  ${SUITESPARSE_LIBRARIES}
   easyexif
   statx
   stlplus3
@@ -209,12 +213,14 @@ if (BUILD_TESTING)
   gtest(math/find_polynomial_roots_companion_matrix)
   gtest(math/find_polynomial_roots_jenkins_traub)
   gtest(math/graph/connected_components)
+  gtest(math/graph/minimum_spanning_tree)
   gtest(math/graph/normalized_graph_cut)
   gtest(math/l1_solver)
   gtest(math/matrix/gauss_jordan)
   gtest(math/matrix/rq_decomposition)
   gtest(math/polynomial)
   gtest(math/probability/sprt)
+  gtest(math/qp_solver)
   gtest(sfm/bundle_adjustment/optimize_relative_position_with_known_rotation)
   gtest(sfm/camera/camera)
   gtest(sfm/camera/projection_matrix_utils)
@@ -269,7 +275,7 @@ if (BUILD_TESTING)
   gtest(sfm/triangulation/triangulation)
   gtest(sfm/twoview_info)
   gtest(sfm/view)
-  gtest(sfm/view_graph/orientations_from_view_graph)
+  gtest(sfm/view_graph/orientations_from_maximum_spanning_tree)
   gtest(sfm/view_graph/remove_disconnected_view_pairs)
   gtest(sfm/view_graph/triplet_extractor)
   gtest(sfm/view_graph/view_graph)

@@ -1,4 +1,4 @@
-// Copyright (C) 2015 The Regents of the University of California (Regents).
+// Copyright (C) 2016 The Regents of the University of California (Regents).
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -32,44 +32,20 @@
 // Please contact the author of this library if you have any questions.
 // Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
 
-#ifndef THEIA_SFM_LOCALIZE_VIEW_TO_RECONSTRUCTION_H_
-#define THEIA_SFM_LOCALIZE_VIEW_TO_RECONSTRUCTION_H_
+#ifndef THEIA_IO_WRITE_NVM_FILE_H_
+#define THEIA_IO_WRITE_NVM_FILE_H_
 
-#include "theia/sfm/bundle_adjustment/bundle_adjustment.h"
-#include "theia/sfm/types.h"
-#include "theia/solvers/sample_consensus_estimator.h"
+#include <string>
 
 namespace theia {
 
 class Reconstruction;
 
-// The reprojection_error_threshold_pixels is the threshold (measured in pixels)
-// that determines inliers and outliers during RANSAC. This value will override
-// the error thresh set in the RansacParameters.
-struct LocalizeViewToReconstructionOptions {
-  double reprojection_error_threshold_pixels;
-  RansacParameters ransac_params;
-
-  // The view will be bundle adjusted (while all tracks are held constant) if
-  // this is set to true.
-  bool bundle_adjust_view = true;
-  BundleAdjustmentOptions ba_options;
-
-  // The minimum number of inliers found from RANSAC in order to be considered
-  // successful localization.
-  int min_num_inliers = 30;
-};
-
-// Localizes a view to the reconstruction using 2D-3D correspondences to
-// estimate the absolute camera pose. If the focal length is known then the P3P
-// algorithm is used, otherwise P4Pf is used to additionally recover the focal
-// length.
-bool LocalizeViewToReconstruction(
-    const ViewId view_to_localize,
-    const LocalizeViewToReconstructionOptions options,
-    Reconstruction* reconstruction,
-    RansacSummary* summary);
+// Writes an NVM file that may then be inspected with Visual SfM or other
+// software packages.
+bool WriteNVMFile(const std::string& nvm_filepath,
+                  const Reconstruction& reconstruction);
 
 }  // namespace theia
 
-#endif  // THEIA_SFM_LOCALIZE_VIEW_TO_RECONSTRUCTION_H_
+#endif  // THEIA_IO_WRITE_NVM_FILE_H_

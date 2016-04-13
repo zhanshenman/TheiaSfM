@@ -32,23 +32,25 @@
 // Please contact the author of this library if you have any questions.
 // Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
 
-#include "theia/sfm/view_graph/orientations_from_view_graph.h"
+#include "theia/sfm/view_graph/orientations_from_maximum_spanning_tree.h"
 
 #include <ceres/rotation.h>
 #include <Eigen/Core>
+
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include "theia/util/map_util.h"
+#include "theia/math/graph/minimum_spanning_tree.h"
 #include "theia/sfm/twoview_info.h"
 #include "theia/sfm/types.h"
 #include "theia/sfm/view_graph/view_graph.h"
+#include "theia/util/map_util.h"
 
 namespace theia {
 namespace {
-
 typedef std::pair<TwoViewInfo, ViewIdPair> HeapElement;
 
 bool SortHeapElement(const HeapElement& h1, const HeapElement& h2) {
@@ -104,20 +106,44 @@ void AddEdgesToHeap(
 
 }  // namespace
 
-void OrientationsFromViewGraph(
+bool OrientationsFromMaximumSpanningTree(
     const ViewGraph& view_graph,
-    const ViewId root_view_id,
     std::unordered_map<ViewId, Eigen::Vector3d>* orientations) {
-  CHECK(view_graph.HasView(root_view_id))
-      << "The root node does not exist in the view graph.";
+  CHECK_NOTNULL(orientations);
 
-  // We use a heap to determine the next edges to add to the minimum spanning
-  // tree.
+  // Compute maximum spanning tree.
+  const auto& all_edges = view_graph.GetAllEdges();
+  MinimumSpanningTree<ViewId, int> mst_extractor;
+  for (const auto& edge : all_edges) {
+    // Since we want the *maximum* spanning tree, we negate all of the edge
+    // weights in the *minimum* spanning tree extractor.
+    mst_extractor.AddEdge(edge.first.first,
+                          edge.first.second,
+                          -edge.second.num_verified_matches);
+  }
+
+  std::unordered_set<ViewIdPair> mst;
+  if (!mst_extractor.Extract(&mst)) {
+    VLOG(2)
+        << "Could not extract the maximum spanning tree from the view graph";
+    return false;
+  }
+
+  // Create an MST view graph.
+  ViewGraph mst_view_graph;
+  for (const ViewIdPair& edge : mst) {
+    mst_view_graph.AddEdge(edge.first, edge.second,
+                           *view_graph.GetEdge(edge.first, edge.second));
+  }
+
+  // Chain the relative rotations together to compute orientations.  We use a
+  // heap to determine the next edges to add to the minimum spanning tree.
   std::vector<HeapElement> heap;
 
   // Set the root value.
+  const ViewId root_view_id = mst.begin()->first;
   (*orientations)[root_view_id] = Eigen::Vector3d::Zero();
-  AddEdgesToHeap(view_graph, *orientations, root_view_id, &heap);
+  AddEdgesToHeap(mst_view_graph, *orientations, root_view_id, &heap);
 
   while (!heap.empty()) {
     const HeapElement next_edge = heap.front();
@@ -139,8 +165,12 @@ void OrientationsFromViewGraph(
         next_edge.second.second);
 
     // Add all edges to the heap.
-    AddEdgesToHeap(view_graph, *orientations, next_edge.second.second, &heap);
+    AddEdgesToHeap(mst_view_graph,
+                   *orientations,
+                   next_edge.second.second,
+                   &heap);
   }
+  return true;
 }
 
 }  // namespace theia

@@ -1,4 +1,4 @@
-// Copyright (C) 2015 The Regents of the University of California (Regents).
+// Copyright (C) 2014 The Regents of the University of California (Regents).
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -32,44 +32,24 @@
 // Please contact the author of this library if you have any questions.
 // Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
 
-#ifndef THEIA_SFM_LOCALIZE_VIEW_TO_RECONSTRUCTION_H_
-#define THEIA_SFM_LOCALIZE_VIEW_TO_RECONSTRUCTION_H_
+#ifndef THEIA_SFM_VIEW_GRAPH_ORIENTATIONS_FROM_MAXIMUM_SPANNING_TREE_H_
+#define THEIA_SFM_VIEW_GRAPH_ORIENTATIONS_FROM_MAXIMUM_SPANNING_TREE_H_
 
-#include "theia/sfm/bundle_adjustment/bundle_adjustment.h"
+#include <Eigen/Core>
+#include <unordered_map>
+
 #include "theia/sfm/types.h"
-#include "theia/solvers/sample_consensus_estimator.h"
+#include "theia/sfm/view_graph/view_graph.h"
 
 namespace theia {
 
-class Reconstruction;
-
-// The reprojection_error_threshold_pixels is the threshold (measured in pixels)
-// that determines inliers and outliers during RANSAC. This value will override
-// the error thresh set in the RansacParameters.
-struct LocalizeViewToReconstructionOptions {
-  double reprojection_error_threshold_pixels;
-  RansacParameters ransac_params;
-
-  // The view will be bundle adjusted (while all tracks are held constant) if
-  // this is set to true.
-  bool bundle_adjust_view = true;
-  BundleAdjustmentOptions ba_options;
-
-  // The minimum number of inliers found from RANSAC in order to be considered
-  // successful localization.
-  int min_num_inliers = 30;
-};
-
-// Localizes a view to the reconstruction using 2D-3D correspondences to
-// estimate the absolute camera pose. If the focal length is known then the P3P
-// algorithm is used, otherwise P4Pf is used to additionally recover the focal
-// length.
-bool LocalizeViewToReconstruction(
-    const ViewId view_to_localize,
-    const LocalizeViewToReconstructionOptions options,
-    Reconstruction* reconstruction,
-    RansacSummary* summary);
+// Computes orientations of each view in the view graph by computing the maximum
+// spanning tree (by edge weight) and solving for the global orientations by
+// chaining rotations.
+bool OrientationsFromMaximumSpanningTree(
+    const ViewGraph& view_graph,
+    std::unordered_map<ViewId, Eigen::Vector3d>* orientations);
 
 }  // namespace theia
 
-#endif  // THEIA_SFM_LOCALIZE_VIEW_TO_RECONSTRUCTION_H_
+#endif  // THEIA_SFM_VIEW_GRAPH_ORIENTATIONS_FROM_MAXIMUM_SPANNING_TREE_H_

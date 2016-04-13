@@ -1,4 +1,4 @@
-// Copyright (C) 2014 The Regents of the University of California (Regents).
+// Copyright (C) 2016 The Regents of the University of California (Regents).
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -32,27 +32,28 @@
 // Please contact the author of this library if you have any questions.
 // Author: Chris Sweeney (cmsweeney@cs.ucsb.edu)
 
-#ifndef THEIA_SFM_VIEW_GRAPH_ORIENTATIONS_FROM_VIEW_GRAPH_H_
-#define THEIA_SFM_VIEW_GRAPH_ORIENTATIONS_FROM_VIEW_GRAPH_H_
+#include <glog/logging.h>
+#include <gflags/gflags.h>
+#include <theia/theia.h>
 
-#include <Eigen/Core>
-#include <unordered_map>
+#include <string>
 
-#include "theia/sfm/types.h"
-#include "theia/sfm/view_graph/view_graph.h"
+DEFINE_string(output_nvm_file, "", "Output nmv file.");
+DEFINE_string(input_reconstruction_file, "",
+              "Input reconstruction file in binary format.");
 
-namespace theia {
+int main(int argc, char* argv[]) {
+  google::InitGoogleLogging(argv[0]);
+  THEIA_GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-// Computes orientations of each view in the view graph by walking along the
-// edges of the view graph and concatenating the relative rotations that connect
-// each view. The relative rotations from the TwoViewInfo connecting two views
-// is used. NOTE: This algorithm will only compute orientation estimations for
-// the connected component that the root view belongs to.
-void OrientationsFromViewGraph(
-    const ViewGraph& view_graph,
-    const ViewId root_view_id,
-    std::unordered_map<ViewId, Eigen::Vector3d>* orientations);
+  // Load the reconstuction.
+  theia::Reconstruction reconstruction;
+  CHECK(theia::ReadReconstruction(FLAGS_input_reconstruction_file,
+                                  &reconstruction))
+      << "Could not read Reconstruction file.";
 
-}  // namespace theia
+  CHECK(theia::WriteNVMFile(FLAGS_output_nvm_file, reconstruction))
+      << "Could not write NVM file.";
 
-#endif  // THEIA_SFM_VIEW_GRAPH_ORIENTATIONS_FROM_VIEW_GRAPH_H_
+  return 0;
+}
